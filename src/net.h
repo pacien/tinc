@@ -122,6 +122,8 @@ typedef struct outgoing_t {
 	struct node_t *node;
 	int timeout;
 	timeout_t ev;
+	struct resolve_t *proxy_lookup;
+	struct addrinfo *proxy_ai;      // For the next connection attempt
 } outgoing_t;
 
 typedef struct ports_t {
