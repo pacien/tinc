@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Install Git
-        run: apt update; apt install -y --no-install-recommends git
+        run: apt update; apt install -y --no-install-recommends git ca-certificates
 
       - name: Checkout code
         uses: actions/checkout@v6
