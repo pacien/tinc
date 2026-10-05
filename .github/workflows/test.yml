@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests_cross_${{ matrix.arch }}
-          path: /tmp/logs/tests.*.tar.gz
+          path: logs/tests.*.tar.gz
         if: always()
 
   muon:
@@ -191,7 +191,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests_sanitizer_${{ matrix.sanitizer }}
-          path: /tmp/logs/tests.*.tar.gz
+          path: logs/tests.*.tar.gz
         if: always()
 
   linux:
@@ -245,7 +245,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests_${{ env.ARTIFACT }}
-          path: /tmp/logs/tests.*.tar.gz
+          path: logs/tests.*.tar.gz
         if: always()
 
       - name: Build package
@@ -324,7 +324,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests_macos
-          path: /tmp/logs/tests.*.tar.gz
+          path: logs/tests.*.tar.gz
         if: always()
 
   mingw:
@@ -388,7 +388,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests_windows
-          path: /tmp/logs/tests.*.tar.gz
+          path: logs/tests.*.tar.gz
         if: always()
 
   msvc:
