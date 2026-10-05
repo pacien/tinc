@@ -160,6 +160,7 @@ jobs:
           - undefined
     container:
       image: debian:stable-slim
+      options: --privileged
       env:
         CI: 1
         SANITIZER: "${{ matrix.sanitizer }}"
