@@ -31,6 +31,7 @@ typedef struct address_cache_t {
 	struct config_t *cfg;
 	struct addrinfo *ai;
 	struct addrinfo *aip;
+	struct resolve_t *resolving;
 	unsigned int tried;
 
 	struct {

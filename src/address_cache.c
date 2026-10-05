@@ -23,6 +23,7 @@
 #include "conf.h"
 #include "names.h"
 #include "netutl.h"
+#include "resolver.h"
 #include "xalloc.h"
 
 static const unsigned int NOT_CACHED = UINT_MAX;
@@ -116,6 +117,46 @@ void add_recent_address(address_cache_t *cache, const sockaddr_t *sa) {
 	}
 }
 
+// Turn the result of getaddrinfo() into a list that free_known_addresses() can free.
+static struct addrinfo *copy_addrinfo(struct addrinfo *result) {
+	struct addrinfo *ai = NULL;
+
+	for(struct addrinfo *aip = result; aip; aip = aip->ai_next) {
+		struct addrinfo *oai = ai;
+
+		ai = xzalloc(sizeof(*ai));
+		ai->ai_family = aip->ai_family;
+		ai->ai_socktype = aip->ai_socktype;
+		ai->ai_protocol = aip->ai_protocol;
+		ai->ai_addrlen = aip->ai_addrlen;
+		ai->ai_addr = xmalloc(ai->ai_addrlen);
+		memcpy(ai->ai_addr, aip->ai_addr, ai->ai_addrlen);
+		ai->ai_next = oai;
+	}
+
+	freeaddrinfo(result);
+	return ai;
+}
+
+static void address_resolved(void *data, struct addrinfo *ai) {
+	address_cache_t *cache = data;
+	cache->resolving = NULL;
+
+	if(ai) {
+		cache->aip = cache->ai = copy_addrinfo(ai);
+	}
+
+	// Either way, there is something new to try: these addresses, or the next Address.
+	retry_outgoing_now(cache->node);
+}
+
+static void cancel_resolving(address_cache_t *cache) {
+	if(cache->resolving) {
+		resolve_cancel(cache->resolving);
+		cache->resolving = NULL;
+	}
+}
+
 const sockaddr_t *get_recent_address(address_cache_t *cache) {
 	// Check if there is an address in our cache of recently seen addresses
 	if(cache->tried < cache->data.used) {
@@ -154,7 +195,7 @@ const sockaddr_t *get_recent_address(address_cache_t *cache) {
 		cache->cfg = lookup_config(cache->config_tree, "Address");
 	}
 
-	while(cache->cfg && !cache->aip) {
+	while(cache->cfg && !cache->aip && !cache->resolving) {
 		char *address, *port;
 
 		get_config_string(cache->cfg, &address);
@@ -172,34 +213,25 @@ const sockaddr_t *get_recent_address(address_cache_t *cache) {
 
 		if(cache->ai) {
 			free_known_addresses(cache->ai);
+			cache->ai = NULL;
 		}
 
-		cache->aip = cache->ai = str2addrinfo(address, port, SOCK_STREAM);
+		struct addrinfo *ai = resolve_numeric(address, port, SOCK_STREAM);
 
-		if(cache->ai) {
-			struct addrinfo *ai = NULL;
-
-			for(; cache->aip; cache->aip = cache->aip->ai_next) {
-				struct addrinfo *oai = ai;
-
-				ai = xzalloc(sizeof(*ai));
-				ai->ai_family = cache->aip->ai_family;
-				ai->ai_socktype = cache->aip->ai_socktype;
-				ai->ai_protocol = cache->aip->ai_protocol;
-				ai->ai_addrlen = cache->aip->ai_addrlen;
-				ai->ai_addr = xmalloc(ai->ai_addrlen);
-				memcpy(ai->ai_addr, cache->aip->ai_addr, ai->ai_addrlen);
-				ai->ai_next = oai;
-			}
-
-			freeaddrinfo(cache->ai);
-			cache->aip = cache->ai = ai;
+		if(ai) {
+			cache->aip = cache->ai = copy_addrinfo(ai);
+		} else {
+			cache->resolving = resolve_start(address, port, SOCK_STREAM, address_resolved, cache);
 		}
 
 		free(address);
 		free(port);
 
 		cache->cfg = lookup_config_next(cache->config_tree, cache->cfg);
+	}
+
+	if(cache->resolving) {
+		return NULL;
 	}
 
 	if(cache->ai) {
@@ -243,6 +275,7 @@ address_cache_t *open_address_cache(node_t *node) {
 	cache->cfg = NULL;
 	cache->ai = NULL;
 	cache->aip = NULL;
+	cache->resolving = NULL;
 	cache->tried = 0;
 	cache->data.version = ADDRESS_CACHE_VERSION;
 
@@ -254,6 +287,8 @@ address_cache_t *open_address_cache(node_t *node) {
 }
 
 void reset_address_cache(address_cache_t *cache) {
+	cancel_resolving(cache);
+
 	if(cache->config_tree) {
 		exit_configuration(cache->config_tree);
 		cache->config_tree = NULL;
@@ -271,6 +306,8 @@ void reset_address_cache(address_cache_t *cache) {
 }
 
 void close_address_cache(address_cache_t *cache) {
+	cancel_resolving(cache);
+
 	if(cache->config_tree) {
 		exit_configuration(cache->config_tree);
 		cache->config_tree = NULL;

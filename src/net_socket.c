@@ -416,6 +416,16 @@ void retry_outgoing(outgoing_t *outgoing) {
 	logger(DEBUG_CONNECTIONS, LOG_NOTICE, "Trying to re-establish outgoing connection in %d seconds", outgoing->timeout);
 }
 
+void retry_outgoing_now(const node_t *n) {
+	for list_each(outgoing_t, outgoing, &outgoing_list) {
+		if(outgoing->node == n) {
+			timeout_add(&outgoing->ev, retry_outgoing_handler, outgoing, &(struct timeval) {
+				0, 0
+			});
+		}
+	}
+}
+
 void finish_connecting(connection_t *c) {
 	logger(DEBUG_CONNECTIONS, LOG_INFO, "Connected to %s (%s)", c->name, c->hostname);
 
@@ -570,6 +580,11 @@ begin:
 	sa = get_recent_address(outgoing->node->address_cache);
 
 	if(!sa) {
+		if(outgoing->node->address_cache->resolving) {
+			logger(DEBUG_CONNECTIONS, LOG_INFO, "Waiting for the addresses of %s to be resolved", outgoing->node->name);
+			return false;
+		}
+
 		logger(DEBUG_CONNECTIONS, LOG_ERR, "Could not set up a meta connection to %s", outgoing->node->name);
 		retry_outgoing(outgoing);
 		return false;
