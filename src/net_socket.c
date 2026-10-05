@@ -580,7 +580,7 @@ begin:
 	sa = get_recent_address(outgoing->node->address_cache);
 
 	if(!sa) {
-		if(outgoing->node->address_cache->resolving) {
+		if(outgoing->node->address_cache->waiting) {
 			logger(DEBUG_CONNECTIONS, LOG_INFO, "Waiting for the addresses of %s to be resolved", outgoing->node->name);
 			return false;
 		}

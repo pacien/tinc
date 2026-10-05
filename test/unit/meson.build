@@ -72,6 +72,19 @@ tests = {
 
 if can_wrap
   tests += {
+    'address_cache': {
+      'code': ['test_address_cache.c', 'fake_getaddrinfo.c'],
+      'mock': ['getaddrinfo', 'retry_outgoing_now'],
+      'cases': [
+        'test_numeric_addresses_need_no_waiting',
+        'test_lookups_run_in_parallel',
+        'test_order_of_address_statements_is_kept',
+        'test_failed_lookups_are_skipped',
+        'test_lookup_completing_during_connection_attempt_does_not_wake',
+        'test_reset_cancels_pending_lookups',
+        'test_any_address_statements',
+      ],
+    },
     'resolver': {
       'code': ['test_resolver.c', 'fake_getaddrinfo.c'],
       'mock': ['getaddrinfo'],
