@@ -87,6 +87,7 @@ tincd_SOURCES = \
 	protocol_misc.c \
 	protocol_subnet.c \
 	raw_socket_device.c \
+	resolver.c resolver.h \
 	route.c route.h \
 	rsa.h \
 	rsagen.h \
@@ -269,8 +270,9 @@ endif
 if MINIUPNPC
 tincd_SOURCES += upnp.h upnp.c
 tincd_LDADD = $(MINIUPNPC_LIBS)
-tincd_LDFLAGS = -pthread
 endif
+
+tincd_LDFLAGS = -pthread
 
 tinc_LDADD = $(READLINE_LIBS) $(CURSES_LIBS)
 sptps_speed_LDADD = -lrt
